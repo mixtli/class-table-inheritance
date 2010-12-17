@@ -7,8 +7,9 @@ class ActiveRecord::Base
   attr_reader :reflection
 
   def self.acts_as_superclass
-    if self.column_names.include?("subtype")
+    if self.column_names.include?("child_type")
       def self.find(*args)
+        puts "in find #{args.inspect}"
         super_classes = super
         begin
           if super_classes.kind_of? Array
@@ -38,12 +39,12 @@ class ActiveRecord::Base
   def self.inherits_from(association_id)
     
     # add an association, and set the foreign key.
-    has_one association_id, :foreign_key => :id, :dependent => :destroy
+    has_one association_id, :as => :child
 
 
     # set the primary key, it' need because the generalized table doesn't have
     # a field ID.
-    set_primary_key "#{association_id}_id"
+    #set_primary_key "#{association_id}_id"
 
 
     # Autobuild method to make a instance of association
@@ -87,7 +88,7 @@ class ActiveRecord::Base
     inherited_columns = association_class.column_names
     # Make a filter in association colluns to exclude the colluns that
     # the generalized class already have.
-    inherited_columns = inherited_columns.reject { |c| self.column_names.grep(c).length > 0 || c == "type" || c == "subtype"}
+    inherited_columns = inherited_columns.reject { |c| self.column_names.grep(c).length > 0 || c == "type" || c == "child_type" || c == "child_id"}
     # Get the methods of the association class and tun it to an Array of Strings.
     inherited_methods = association_class.reflections.map { |key,value| key.to_s }
     # Make a filter in association methods to exclude the methods that
@@ -103,7 +104,7 @@ class ActiveRecord::Base
     	  # this is needed to bypass the overflow problem when the ActiveRecord
     	  # try to get the id to find the association.
     	  if name == 'id'
-    	    self["#{association_id}_id"]
+    	    #self["#{association_id}_id"]
     	  else 
           assoc = send(association_id)
           assoc.send(name)
@@ -116,7 +117,7 @@ class ActiveRecord::Base
     	  # this is needed to bypass the overflow problem when the ActiveRecord
     	  # try to get the id to find the association.
     	  if name == 'id'
-    	    self["#{association_id}_id"] = new_value
+    	    #self["#{association_id}_id"] = new_value
     	  else     	  
           assoc = send(association_id)
           assoc.send("#{name}=", new_value)
@@ -130,11 +131,12 @@ class ActiveRecord::Base
     # generalized class.
     define_method("save_inherit") do |*args|
       association = send(association_id)
-      if association.attribute_names.include?("subtype")
-        association.subtype = self.class.to_s
-      end
+      #if association.attribute_names.include?("child_type")
+      #  association.child_type = self.class.to_s
+      #  association.child_id = self.id
+      #end
       association.save
-      self["#{association_id}_id"] = association.id
+      #self["#{association_id}_id"] = association.id
       true
     end
   end
